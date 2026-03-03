@@ -17,9 +17,9 @@ app.use(express.urlencoded({ extended: true, limit: '10gb' }));
 // =========================
 // GARANTIR PASTA UPLOAD
 // =========================
-const uploadDir = path.join(__dirname, 'ApiUp', 'Uploads');
+const uploadDir = path.join(__dirname, 'Uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-app.use('/ApiUp/Uploads', express.static(uploadDir));
+app.use('/Uploads', express.static(uploadDir));
 
 // =========================
 // CONFIGURAÇÃO DO MULTER
@@ -35,8 +35,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    fileFilter: (req, file, cb) => cb(null, true), // aceita tudo
-    limits: { fileSize: Infinity } // sem limite de tamanho
+    fileFilter: (req, file, cb) => cb(null, true),
+    limits: { fileSize: Infinity }
 });
 
 // =========================
@@ -46,9 +46,8 @@ app.post('/upload', upload.single('file'), (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'Nenhum arquivo enviado' });
 
-        // 🔹 Retorna URL HTTPS (para Render ou qualquer host que esteja usando)
         const baseUrl = `https://${req.get('host')}`;
-        const fileUrl = `${baseUrl}/ApiUp/Uploads/${req.file.filename}`;
+        const fileUrl = `${baseUrl}/Uploads/${req.file.filename}`;
 
         res.status(200).json({
             success: true,
@@ -58,7 +57,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
                 savedName: req.file.filename,
                 size: req.file.size,
                 mimeType: req.file.mimetype,
-                url: fileUrl // 🔥 URL pública HTTPS
+                url: fileUrl
             }
         });
 
@@ -75,21 +74,17 @@ app.get('/files', (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Erro ao listar arquivos' });
 
         const baseUrl = `https://${req.get('host')}`;
-        const fileList = files.map(file => ({ name: file, url: `${baseUrl}/ApiUp/Uploads/${file}` }));
+        const fileList = files.map(file => ({ name: file, url: `${baseUrl}/Uploads/${file}` }));
 
         res.json({ success: true, total: fileList.length, files: fileList });
     });
 });
 
 // =========================
-// DELETAR ARQUIVO
+// DELETAR ARQUIVO (DESATIVADO)
 // =========================
 app.delete('/delete/:filename', (req, res) => {
-    const filePath = path.join(uploadDir, req.params.filename);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Arquivo não encontrado' });
-
-    fs.unlinkSync(filePath);
-    res.json({ success: true, message: 'Arquivo removido' });
+    res.status(403).json({ success: false, message: 'Deleção desativada no servidor' });
 });
 
 // =========================
@@ -98,6 +93,17 @@ app.delete('/delete/:filename', (req, res) => {
 app.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
         return res.status(400).json({ success: false, message: err.message });
+    }
+    res.status(500).json({ success: false, message: 'Erro inesperado', error: err.message });
+});
+
+// =========================
+// START
+// =========================
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
+    console.log(`Arquivos salvos em: ${uploadDir}`);
+});age: err.message });
     }
     res.status(500).json({ success: false, message: 'Erro inesperado', error: err.message });
 });
